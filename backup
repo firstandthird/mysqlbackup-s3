@@ -2,7 +2,7 @@
 
 PREFIX=${PREFIX:-backup}
 DATE=$(date +%Y%m%d_%H%M%S)
-FILE='/backup/$date.sql.gz'
+FILE="/backup/$date.sql.gz"
 
 if [ -z "$AWS_ACCESS_KEY_ID" ]; then
   echo "AWS_ACCESS_KEY_ID must be set"

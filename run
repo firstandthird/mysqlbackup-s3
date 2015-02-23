@@ -1,0 +1,34 @@
+#!/bin/bash
+
+PREFIX=${PREFIX:-backup}
+DATE=$(date +%Y%m%d_%H%M%S)
+FILE="/backup/$date.sql.gz"
+
+if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+  echo "AWS_ACCESS_KEY_ID must be set"
+fi
+
+if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+  echo "AWS_SECRET_ACCESS_KEY must be set"
+fi
+
+if [ -z "$S3BUCKET" ]; then
+  echo "S3BUCKET must be set"
+fi
+
+if [ -z "$DB" ]; then
+  echo "DB must be set"
+fi
+
+if [[ "$1" == "backup" ]]; then
+  echo "Starting backup..."
+  mysqldump --host $MYSQL_PORT_3306_TCP_ADDR --user root -p$MYSQL_ENV_MYSQL_ROOT_PASSWORD --add-drop-database --databases $DB | gzip > $FILE
+  aws s3api put-object --bucket $S3BUCKET --key $PREFIX-$DATE.sql.gz --body $FILE
+else
+  echo "Starting restore..."
+  FILE=$1
+  aws s3api get-object --bucket $S3BUCKET --key $FILE /backup/$FILE
+  gunzip /backup/$FILE
+  mysql --host $MYSQL_PORT_3306_TCP_ADDR --user root -p$MYSQL_ENV_MYSQL_ROOT_PASSWORD < ${FILE%.*}
+fi
+

@@ -11,6 +11,13 @@ docker build -t mysqlbackup-s3 git://github.com/firstandthird/mysqlbackup-s3.git
 
 ## Usage
 
+### Backup
+
 ```
-docker run --rm --link mysql:mysql --env AWS_ACCESS_KEY_ID=123 --env AWS_SECRET_ACCESS_KEY=123 --env S3BUCKET=bucket --env DB=db --env PREFIX=backup mysqlbackup-s3
+docker run --rm --link mysql:mysql --env AWS_ACCESS_KEY_ID=123 --env AWS_SECRET_ACCESS_KEY=123 --env S3BUCKET=bucket --env DB=db --env PREFIX=backup mysqlbackup-s3 "backup"
+```
+
+### Restore
+```
+docker run --rm --link mysql:mysql --env AWS_ACCESS_KEY_ID=123 --env AWS_SECRET_ACCESS_KEY=123 --env S3BUCKET=bucket --env DB=db mysqlbackup-s3 "db-file.sql.gz"
 ```

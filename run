@@ -1,8 +1,6 @@
 #!/bin/bash
 
 PREFIX=${PREFIX:-backup}
-DATE=$(date +%Y%m%d_%H%M%S)
-FILE="/backup/$date.sql.gz"
 
 if [ -z "$AWS_ACCESS_KEY_ID" ]; then
   echo "AWS_ACCESS_KEY_ID must be set"
@@ -40,18 +38,34 @@ if [[ -z "$MYSQL_USER" ]]; then
   MYSQL_USER=root
 fi
 
+if [ -z "$DATEFORMAT" ]; then
+  DATEFORMAT='%Y%m%d_%H%M%S'
+fi
+
+restore() {
+  aws s3api get-object --bucket $S3BUCKET --key $FILE /backup/$FILE
+  gunzip /backup/$FILE
+  mysql --host $MYSQL_HOST --user $MYSQL_USER -p$MYSQL_PASS < ${FILE%.*}
+}
+
 if [[ "$1" == "backup" ]]; then
   echo "Starting backup..."
+  DATE=$(date +$DATEFORMAT)
+  FILE="/backup/$date.sql.gz"
   mysqldump --host $MYSQL_HOST --user $MYSQL_USER -p$MYSQL_PASS --add-drop-database --databases $DB | gzip > $FILE
   aws s3api put-object --bucket $S3BUCKET --key $PREFIX-$DATE.sql.gz --body $FILE
 elif [[ "$1" == "list" ]]; then
   echo "Listing backups..."
   aws s3api list-objects --bucket $S3BUCKET --query 'Contents[].{Key: Key, Size: Size}' --output table
+elif [ "$1" == "latest" ]; then
+  echo "Determining backup to restore..."
+
+  : ${FILE:=$(aws s3 ls s3://$S3BUCKET | awk -F " " '{print $4}' | grep ^$FILEPREFIX | sort -r | head -n1)}
+  echo "Restoring $FILE."
+  restore
 else
-  echo "Starting restore..."
+  echo "Starting restore"
   FILE=$1
-  aws s3api get-object --bucket $S3BUCKET --key $FILE /backup/$FILE
-  gunzip /backup/$FILE
-  mysql --host $MYSQL_HOST --user $MYSQL_USER -p$MYSQL_PASS < ${FILE%.*}
+  restore
 fi
 
